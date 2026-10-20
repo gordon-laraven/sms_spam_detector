@@ -107,7 +107,6 @@ The model is a scikit-learn pipeline with two steps:
 | `spam_filter.py` | Training, evaluation, saving and prediction code |
 | `model/spam_filter.joblib` | The trained model the app loads |
 | `gradio_sms_text_classification.ipynb` | Step-by-step walkthrough notebook |
-| `sms_text_classification_solution.ipynb` | Original course solution notebook |
 | `Resources/SMSSpamCollection.csv` | The dataset |
 | `requirements.txt` | Python packages |
 

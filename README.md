@@ -1,112 +1,118 @@
-# SMS Spam Classification with Gradio
+---
+title: SMS Spam Filter
+emoji: 📨
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+sdk_version: 6.30.0
+python_version: "3.11"
+app_file: app.py
+pinned: false
+short_description: AI filter that sorts text messages into real and spam
+---
 
-## Table of Contents
-1. [Background](#background)
-2. [Files](#files)
-3. [Challenge Instructions](#challenge-instructions)
-   - [Create the SMS Classification Function](#create-the-sms-classification-function)
-   - [Create the SMS Prediction Function](#create-the-sms-prediction-function)
-   - [Create the Gradio Interface Application](#create-the-gradio-interface-application)
-4. [References](#references)
+# SMS Spam Filter
 
-## Background
-The goal of this project is to refactor an existing SMS text classification solution into a function that constructs a linear Support Vector Classification (SVC) model. Once the model is created and trained, we will build a Gradio application that enables users to test text messages and receive instant feedback on whether a message is classified as spam or not based on the model's predictions.
+An AI filter that sorts incoming texts into real and spam so your team only sees messages that matter.
 
-## Files
-- **Starter Code and Dataset**: Download the starter files from this link: [Module 21 Challenge Files](https://static.bc-edx.com/ai/ail-v-1-0/m21/lms/starter/M21_Starter_Code.zip). The main files included are:
-  - `gradio_sms_text_classification.ipynb`
-  - `sms_text_classification_solution.ipynb`
-  - `SMSSpamCollection.csv`
+![Screenshot of the spam filter app flagging a prize text as spam](docs/app-screenshot.png)
 
-## Challenge Instructions
-The following steps outline how to implement the SMS classification functionality and build the Gradio interface for prediction.
+## Results
 
-### Create the SMS Classification Function
-1. Import required libraries.
-    ```python
-    import pandas as pd
-    from sklearn.model_selection import train_test_split
-    from sklearn.pipeline import Pipeline
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from sklearn.svm import LinearSVC
-    import gradio as gr
-    ```
+The model was tested on 1,839 text messages it never saw during training (a third of the dataset, held back).
 
-2. Define the `sms_classification` function to build the SVC model. This function will:
-   - Set the features variable to the text message column of the DataFrame.
-   - Set the target variable to the "label" column.
-   - Split the data into training and testing sets with a `test_size` of 33%.
-   - Build a pipeline that includes `TfidfVectorizer` and `LinearSVC`.
-   - Fit the model to the training data.
-   
-   Here's the implementation:
-   ```python
-   def sms_classification(sms_text_df):
-       """
-       Perform SMS classification using a pipeline with TF-IDF vectorization and Linear Support Vector Classification.
+| Measure | Result |
+| --- | --- |
+| Overall accuracy | **99.0%** (1,820 of 1,839 correct) |
+| Spam caught | 95.1% (234 of 246 spam messages) |
+| Real messages wrongly flagged as spam | 0.4% (7 of 1,593) |
+| Spam that got through | 12 messages |
 
-       Parameters:
-       - sms_text_df (pd.DataFrame): DataFrame containing 'text_message' and 'label' columns.
+For comparison, a "filter" that let everything through would score 86.6%, because most texts are real.
 
-       Returns:
-       - text_clf (Pipeline): Fitted pipeline model.
-       """
-       X = sms_text_df['text_message']
-       y = sms_text_df['label']
-       x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+**Duplicate check.** The dataset contains 403 exact duplicate messages, so some test messages also
+appear in the training data. After removing duplicates and retraining, accuracy is **98.5%**
+(5-fold cross-validation average: 98.5%). The result holds up without the duplicates.
 
-       text_clf = Pipeline([
-           ('tfidf', TfidfVectorizer()),
-           ('clf', LinearSVC())
-       ])
+**What it gets wrong**
 
-       return text_clf.fit(x_train, y_train)
+- **Missed spam** usually sounds like a friend: flirty or chatty messages ("Hello darling how are
+  you today?"), jokes, and spam with no obvious words like *free*, *win* or *claim*.
+  It also labels "You are a lucky winner of $5000!" as real. Spam in this dataset usually asks
+  you to text or call a number, so a scam without one can slip through.
+- **False alarms** are short, casual real messages, especially ones that mention calls, texts,
+  chat or being free ("No calls..messages..missed calls", "Are you free now?can i call now?").
 
-   # Load the dataset into a DataFrame
-   sms_text_df = pd.read_csv('SMSSpamCollection.csv')
-   text_clf = sms_classification(sms_text_df)
-   ```
+To reproduce these numbers and print every misclassified message, run `python spam_filter.py`.
 
-### Create the SMS Prediction Function
-1. Create the `sms_prediction` function that utilizes the trained model to classify new text messages.
-   - This function will take a new text message as input and return whether it's classified as "spam" or "not spam".
-   
-   Here’s the implementation:
-   ```python
-   def sms_prediction(text):
-       """
-       Predict whether a given text message is spam or not.
+## How to run the app
 
-       Parameters:
-       - text (str): The text message to be classified.
+You need Python 3.11 (the version it was tested on).
 
-       Returns:
-       - str: A message indicating whether the text is classified as spam or not.
-       """
-       prediction = text_clf.predict([text])
-       if prediction[0] == 'ham':
-           return f'The text message: "{text}", is not spam.'
-       else:
-           return f'The text message: "{text}", is spam.'
-   ```
+```bash
+git clone https://github.com/gordon-laraven/sms_spam_detector.git
+cd sms_spam_detector
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
 
-### Create the Gradio Interface Application
-1. Use Gradio to create an interface that will take input from users for text messages and display the classification output.
-   
-   Implement the Gradio interface as follows:
-   ```python
-   sms_app = gr.Interface(
-       fn=sms_prediction,
-       inputs=[gr.Textbox(label="Add the message you want to test here")],
-       outputs=[gr.Textbox(lines=5, label="The result of the prediction: ")]
-   )
+Open the address it prints (usually http://127.0.0.1:7860), paste a text message, and click **Submit**.
 
-   # Launch the app
-   sms_app.launch(show_error=True)
-   ```
+To retrain the model and save a new `model/spam_filter.joblib`:
 
-## References
-- [Pandas Documentation](https://pandas.pydata.org/pandas-docs/stable/)
-- [Gradio Documentation](https://gradio.app/docs/)
-- [Scikit-learn Documentation](https://scikit-learn.org/stable/)
+```bash
+python spam_filter.py
+```
 
+To see how it works step by step, open
+[`gradio_sms_text_classification.ipynb`](gradio_sms_text_classification.ipynb).
+
+## What this means for a client
+
+Spam filtering is one example of a broader job: **sorting incoming messages so people spend their
+time on the ones that matter.** The same approach can be trained on a business's own messages:
+
+- **Support tickets**: route urgent issues to the right team and filter out automated noise.
+- **Lead forms**: separate real enquiries from bots and junk submissions before they reach sales.
+- **Email triage**: sort a shared inbox into categories such as billing, complaints and sales.
+
+Each needs a few thousand labelled examples from the business itself, and a check against messages
+the model has never seen, just like the test above.
+
+## Limitations
+
+- **One dataset.** The model was trained on the UCI SMS Spam Collection: 5,572 English text messages,
+  mostly from the UK and Singapore, published in 2011. Today's spam (delivery scams, bank
+  impersonation, crypto offers) and other languages may not be recognized well.
+- **A person should review anything important.** About 1 in 20 spam messages got through in testing
+  (closer to 1 in 12 once duplicates are removed), and a small number of real messages are flagged. It should not silently delete messages; flagged
+  messages should go somewhere a person can check.
+- **No confidence score.** The app gives a yes/no answer and does not say how sure it is.
+- **Easy to fool on purpose.** It reacts to individual words, so spam written to sound casual can get past it.
+
+## How it works
+
+The model is a scikit-learn pipeline with two steps:
+
+1. **TF-IDF vectorizer**: turns each message into numbers based on which words it uses and how distinctive they are.
+2. **Linear Support Vector Classifier**: learns a boundary between the word patterns of spam and real messages.
+
+## Project files
+
+| File | Purpose |
+| --- | --- |
+| `app.py` | Gradio web app (also the Hugging Face Spaces entry point) |
+| `spam_filter.py` | Training, evaluation, saving and prediction code |
+| `model/spam_filter.joblib` | The trained model the app loads |
+| `gradio_sms_text_classification.ipynb` | Step-by-step walkthrough notebook |
+| `sms_text_classification_solution.ipynb` | Original course solution notebook |
+| `Resources/SMSSpamCollection.csv` | The dataset |
+| `requirements.txt` | Python packages |
+
+## Credits
+
+- Dataset: [SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection),
+  Tiago A. Almeida and José María Gómez Hidalgo, UCI Machine Learning Repository (CC BY 4.0).
+- Built as part of the Columbia AI bootcamp, then refactored into a standalone demo.
